@@ -1,197 +1,205 @@
 import React, { useState, useEffect, useRef } from "react";
 
 export default function DragonJumpGame() {
+  const containerRef = useRef(null);
+
   const [isJumping, setIsJumping] = useState(false);
   const [isGameOver, setIsGameOver] = useState(false);
   const [score, setScore] = useState(0);
-  const [obstaclePosition, setObstaclePosition] = useState(800);
   const [highScore, setHighScore] = useState(0);
+  const [obstacleX, setObstacleX] = useState(100); // percentage
+  const [width, setWidth] = useState(300);
 
   const jumpAudioRef = useRef(null);
   const gameOverAudioRef = useRef(null);
 
-  // ------------------ JUMP FUNCTION ------------------
+  // update container width
+  useEffect(() => {
+    const update = () => {
+      if (containerRef.current) {
+        setWidth(containerRef.current.clientWidth);
+      }
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  // jump
   const jump = () => {
     if (!isJumping && !isGameOver) {
       setIsJumping(true);
-
-      // Play jump audio
       if (jumpAudioRef.current) {
         jumpAudioRef.current.currentTime = 0;
         jumpAudioRef.current.play().catch(() => {});
       }
-
-      setTimeout(() => setIsJumping(false), 500);
+      setTimeout(() => setIsJumping(false), 450);
     }
   };
 
-  // --------------- KEYBOARD CONTROLS -----------------
+  // keyboard support
   useEffect(() => {
-    const handleKeyPress = (e) => {
-      if (e.code === "Space" || e.code === "ArrowUp") {
-        e.preventDefault();
-        jump();
-      }
-      if (e.code === "Enter" && isGameOver) {
-        restartGame();
-      }
+    const press = (e) => {
+      if (e.code === "Space" || e.code === "ArrowUp") jump();
+      if (e.code === "Enter" && isGameOver) restartGame();
     };
-
-    window.addEventListener("keydown", handleKeyPress);
-    return () => window.removeEventListener("keydown", handleKeyPress);
+    window.addEventListener("keydown", press);
+    return () => window.removeEventListener("keydown", press);
   }, [isJumping, isGameOver]);
 
-  // ---------------- GAME LOOP ------------------------
+  // game loop
   useEffect(() => {
     if (isGameOver) return;
 
-    const gameLoop = setInterval(() => {
-      setObstaclePosition((prev) => {
-        if (prev < -60) {
+    const frame = setInterval(() => {
+      setObstacleX((prev) => {
+        const next = prev - 1.5;
+        if (next < -15) {
           setScore((s) => s + 1);
-          return 800;
+          return 100;
         }
-        return prev - 10;
+        return next;
       });
 
-      // Character box
-      const charTop = isJumping ? 150 : 300;
-      const charBottom = charTop + 100;
-      const charLeft = 50;
-      const charRight = 130;
+      // dynamic responsive values
+      const height = (width / 16) * 9;
 
-      // Dragon box
-      const dragLeft = obstaclePosition + 15;
-      const dragRight = obstaclePosition + 45;
-      const dragTop = 315;
-      const dragBottom = 370;
+      // character sizes
+      const cW = width * 0.18;
+      const cH = height * 0.27;
+      const cLeft = width * 0.10;
+      const cBottom = isJumping ? height * 0.50 : height * 0.12;
+
+      const cRight = cLeft + cW;
+      const cTop = cBottom + cH;
+
+      // obstacle sizes
+      const oW = width * 0.14;
+      const oH = height * 0.20;
+      const oLeft = (obstacleX / 100) * width;
+      const oRight = oLeft + oW;
+      const oBottom = height * 0.12;
+      const oTop = oBottom + oH;
 
       const touching =
-        charRight >= dragLeft &&
-        charLeft <= dragRight &&
-        charBottom >= dragTop &&
-        charTop <= dragBottom;
+        cRight >= oLeft &&
+        cLeft <= oRight &&
+        cBottom <= oTop &&
+        cTop >= oBottom;
 
       if (touching) {
         setIsGameOver(true);
-
-        // Play game-over audio
         if (gameOverAudioRef.current) {
           gameOverAudioRef.current.currentTime = 0;
           gameOverAudioRef.current.play().catch(() => {});
         }
-
-        if (score > highScore) setHighScore(score);
+        setHighScore((h) => (score > h ? score : h));
       }
-    }, 20);
+    }, 25);
 
-    return () => clearInterval(gameLoop);
-  }, [obstaclePosition, isJumping, isGameOver, score, highScore]);
+    return () => clearInterval(frame);
+  }, [isJumping, obstacleX, width]);
 
-  // ---------------- RESTART GAME ---------------------
   const restartGame = () => {
     setIsGameOver(false);
+    setObstacleX(100);
     setScore(0);
-    setObstaclePosition(800);
-    setIsJumping(false);
   };
 
-  // ---------------- UI BELOW -------------------------
+  const height = (width / 16) * 9;
+
+  // responsive character sizes for JSX
+  const charW = width * 0.18;
+  const charH = height * 0.27;
+  const charLeft = width * 0.10;
+  const charBottom = isJumping ? height * 0.50 : height * 0.12;
+
   return (
     <div
       style={{
         width: "100vw",
         height: "100vh",
-        background:
-          "linear-gradient(180deg, #87CEEB 0%, #E0F6FF 50%, #90EE90 100%)",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
+        background: "linear-gradient(180deg,#87CEEB, #E0F6FF, #90EE90)",
         fontFamily: "'Comic Sans MS', cursive",
         overflow: "hidden",
-        position: "relative",
       }}
     >
-      {/* AUDIO FILES */}
       <audio ref={jumpAudioRef} src="/devo.mp3" preload="auto" />
       <audio ref={gameOverAudioRef} src="/devo2.mp3" preload="auto" />
 
-      {/* SCORE */}
+      {/* SCORE PANEL */}
       <div
         style={{
           position: "absolute",
-          top: 20,
-          left: 20,
-          padding: "15px 25px",
+          top: 15,
+          left: 15,
           background: "white",
-          borderRadius: "20px",
           border: "3px solid gold",
-          boxShadow: "0 8px 20px rgba(0,0,0,0.2)",
+          borderRadius: 16,
+          padding: "8px 14px",
         }}
       >
-        <div style={{ fontSize: 24, fontWeight: "bold", color: "#FF6347" }}>
+        <div style={{ fontSize: 18, fontWeight: "bold", color: "#ff4a4a" }}>
           Score: {score}
         </div>
-        <div style={{ fontSize: 16, color: "#4169E1" }}>
-          High: {highScore}
-        </div>
+        <div style={{ fontSize: 14, color: "#4169E1" }}>High: {highScore}</div>
       </div>
 
-      {/* GAME CONTAINER */}
+      {/* GAME AREA */}
       <div
+        ref={containerRef}
+        onClick={jump}
         style={{
-          position: "relative",
-          width: 800,
-          height: 400,
-          borderRadius: 30,
-          background:
-            "linear-gradient(180deg, rgba(255,255,255,0.3), rgba(144,238,144,0.5))",
+          width: "95%",
+          maxWidth: 480,
+          height,
+          background: "rgba(255,255,255,0.4)",
+          borderRadius: 20,
           border: "5px solid gold",
           overflow: "hidden",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+          position: "relative",
         }}
-        onClick={jump}
       >
-        {/* GROUND */}
+        {/* Ground */}
         <div
           style={{
             position: "absolute",
             bottom: 0,
+            height: "12%",
             width: "100%",
-            height: 80,
-            background: "linear-gradient(180deg, #90EE90, #228B22)",
+            background: "linear-gradient(#228B22,#32CD32)",
           }}
         />
 
-        {/* CHARACTER */}
-       <div
-  style={{
-    position: "absolute",
-    left: 50,
-    bottom: isJumping ? 230 : 80,
-    transition: "bottom 0.5s",
-  }}
->
-  <img
-    src="/devoImg.png"
-    alt="Player"
-    style={{
-      width: 80,
-      height: 80,
-      objectFit: "contain",
-    }}
-  />
-</div>
-
-
-        {/* OBSTACLE DRAGON */}
+        {/* PLAYER */}
         <div
           style={{
             position: "absolute",
-            left: obstaclePosition,
-            bottom: 80,
-            fontSize: 60,
+            width: charW,
+            height: charH,
+            left: charLeft,
+            bottom: charBottom,
+            transition: "bottom 0.45s",
+          }}
+        >
+          <img
+            src="/devoImg.png"
+            alt="char"
+            style={{ width: "100%", height: "100%", objectFit: "contain" }}
+          />
+        </div>
+
+        {/* OBSTACLE */}
+        <div
+          style={{
+            position: "absolute",
+            left: `${obstacleX}%`,
+            bottom: height * 0.12,
+            fontSize: Math.max(40, width * 0.14),
             transform: "scaleX(-1)",
           }}
         >
@@ -204,42 +212,28 @@ export default function DragonJumpGame() {
             style={{
               position: "absolute",
               inset: 0,
-              background: "rgba(0,0,0,0.75)",
+              background: "rgba(0,0,0,0.7)",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
+              gap: 10,
             }}
           >
-            <h1
-              style={{
-                fontSize: 60,
-                color: "gold",
-                marginBottom: 20,
-                textShadow: "0px 0px 10px black",
-              }}
-            >
-              Game Over
-            </h1>
-            <h2 style={{ color: "white", marginBottom: 10 }}>
-              Score: {score}
-            </h2>
-            <h3 style={{ color: "#90EE90", marginBottom: 20 }}>
-              High Score: {highScore}
-            </h3>
+            <h1 style={{ color: "gold", fontSize: 40 }}>Game Over</h1>
+            <h2 style={{ color: "white" }}>Score: {score}</h2>
+            <h3 style={{ color: "#90EE90" }}>High Score: {highScore}</h3>
 
             <button
               onClick={restartGame}
               style={{
-                padding: "15px 40px",
-                fontSize: 25,
-                borderRadius: 40,
+                padding: "12px 30px",
+                fontSize: 20,
+                background: "linear-gradient(#32CD32,#228B22)",
+                borderRadius: 30,
+                color: "white",
                 border: "none",
                 cursor: "pointer",
-                background:
-                  "linear-gradient(135deg, #32CD32 0%, #228B22 100%)",
-                color: "white",
-                boxShadow: "0 10px 30px rgba(0,0,0,0.4)",
               }}
             >
               Play Again
@@ -251,14 +245,15 @@ export default function DragonJumpGame() {
       {/* INSTRUCTIONS */}
       <div
         style={{
-          marginTop: 20,
-          padding: "15px 30px",
+          marginTop: 15,
+          padding: "10px 20px",
           background: "white",
-          borderRadius: 20,
+          borderRadius: 12,
           border: "3px solid gold",
+          fontSize: 14,
         }}
       >
-        Press **SPACE / ARROW UP / CLICK** to jump.
+        Tap / Space / Arrow Up to Jump
       </div>
     </div>
   );
