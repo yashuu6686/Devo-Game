@@ -7,13 +7,13 @@ export default function DragonJumpGame() {
   const [isGameOver, setIsGameOver] = useState(false);
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
-  const [obstacleX, setObstacleX] = useState(100); // percentage
+  const [obstacleX, setObstacleX] = useState(100);
   const [width, setWidth] = useState(300);
 
   const jumpAudioRef = useRef(null);
   const gameOverAudioRef = useRef(null);
 
-  // update container width
+  // --- RESPONSIVE WIDTH UPDATE ---
   useEffect(() => {
     const update = () => {
       if (containerRef.current) {
@@ -25,7 +25,7 @@ export default function DragonJumpGame() {
     return () => window.removeEventListener("resize", update);
   }, []);
 
-  // jump
+  // --- JUMP FUNCTION ---
   const jump = () => {
     if (!isJumping && !isGameOver) {
       setIsJumping(true);
@@ -37,7 +37,7 @@ export default function DragonJumpGame() {
     }
   };
 
-  // keyboard support
+  // --- KEYBOARD SUPPORT ---
   useEffect(() => {
     const press = (e) => {
       if (e.code === "Space" || e.code === "ArrowUp") jump();
@@ -47,13 +47,13 @@ export default function DragonJumpGame() {
     return () => window.removeEventListener("keydown", press);
   }, [isJumping, isGameOver]);
 
-  // game loop
+  // --- GAME LOOP ---
   useEffect(() => {
     if (isGameOver) return;
 
     const frame = setInterval(() => {
       setObstacleX((prev) => {
-        const next = prev - 1.5;
+        const next = prev - 1.7;
         if (next < -15) {
           setScore((s) => s + 1);
           return 100;
@@ -61,10 +61,9 @@ export default function DragonJumpGame() {
         return next;
       });
 
-      // dynamic responsive values
       const height = (width / 16) * 9;
 
-      // character sizes
+      // Player dimensions
       const cW = width * 0.18;
       const cH = height * 0.27;
       const cLeft = width * 0.10;
@@ -73,7 +72,7 @@ export default function DragonJumpGame() {
       const cRight = cLeft + cW;
       const cTop = cBottom + cH;
 
-      // obstacle sizes
+      // Obstacle dimensions
       const oW = width * 0.14;
       const oH = height * 0.20;
       const oLeft = (obstacleX / 100) * width;
@@ -100,6 +99,7 @@ export default function DragonJumpGame() {
     return () => clearInterval(frame);
   }, [isJumping, obstacleX, width]);
 
+  // --- RESTART GAME ---
   const restartGame = () => {
     setIsGameOver(false);
     setObstacleX(100);
@@ -108,7 +108,6 @@ export default function DragonJumpGame() {
 
   const height = (width / 16) * 9;
 
-  // responsive character sizes for JSX
   const charW = width * 0.18;
   const charH = height * 0.27;
   const charLeft = width * 0.10;
@@ -116,6 +115,7 @@ export default function DragonJumpGame() {
 
   return (
     <div
+      onClick={jump} // MOBILE ANYWHERE CLICK = JUMP
       style={{
         width: "100vw",
         height: "100vh",
@@ -123,7 +123,7 @@ export default function DragonJumpGame() {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        background: "linear-gradient(180deg,#87CEEB, #E0F6FF, #90EE90)",
+        background: "linear-gradient(180deg,#87CEEB,#E0F6FF,#90EE90)",
         fontFamily: "'Comic Sans MS', cursive",
         overflow: "hidden",
       }}
@@ -141,6 +141,7 @@ export default function DragonJumpGame() {
           border: "3px solid gold",
           borderRadius: 16,
           padding: "8px 14px",
+          zIndex: 5,
         }}
       >
         <div style={{ fontSize: 18, fontWeight: "bold", color: "#ff4a4a" }}>
@@ -152,7 +153,6 @@ export default function DragonJumpGame() {
       {/* GAME AREA */}
       <div
         ref={containerRef}
-        onClick={jump}
         style={{
           width: "95%",
           maxWidth: 480,
@@ -218,6 +218,7 @@ export default function DragonJumpGame() {
               alignItems: "center",
               justifyContent: "center",
               gap: 10,
+              zIndex: 10,
             }}
           >
             <h1 style={{ color: "gold", fontSize: 40 }}>Game Over</h1>
@@ -228,7 +229,7 @@ export default function DragonJumpGame() {
               onClick={restartGame}
               style={{
                 padding: "12px 30px",
-                fontSize: 20,
+                fontSize: 22,
                 background: "linear-gradient(#32CD32,#228B22)",
                 borderRadius: 30,
                 color: "white",
@@ -241,6 +242,29 @@ export default function DragonJumpGame() {
           </div>
         )}
       </div>
+
+      {/* MOBILE REPLAY BUTTON (sticky bottom) */}
+      {isGameOver && (
+        <button
+          onClick={restartGame}
+          style={{
+            position: "fixed",
+            bottom: 15,
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "red",
+            border: "none",
+            padding: "14px 30px",
+            fontSize: 20,
+            color: "white",
+            borderRadius: 30,
+            display: window.innerWidth < 600 ? "block" : "none",
+            zIndex: 20,
+          }}
+        >
+          🔄 Replay
+        </button>
+      )}
 
       {/* INSTRUCTIONS */}
       <div
